@@ -190,7 +190,7 @@ def analysis_etf_pipeline():
 def partition_config2(start, end_):
     return {
         "ops": {
-            "get_etf_history": {
+            "perform_analysis": {
                 "config": {"ticker": "XT", "date": start.strftime("%Y%m%d")}
             }
         }
