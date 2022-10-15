@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "reactive_data_pipeline"
+version = "0.1.0"
+description = "A demonstration project for reactive data pipeline"
+authors = ["Yothin Muangsommuk <yothin.m@linecorp.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+yfinance = "^0.1.74"
+sqlmodel = "^0.0.6"
+loguru = "^0.6.0"
+celery = "^5.2.7"
+dagster = "^1.0.13"
+dagit = "^1.0.13"
+black = "^22.10.0"
+flake8 = "^5.0.4"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
