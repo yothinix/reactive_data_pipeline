@@ -15,26 +15,16 @@ def get_etf_info(symbol: str) -> Ticker:
     info = query.info
     logger.info(f"Query Ticker for symbol={symbol} success")
 
-    name = info["longName"]
-    quote_type = info["quoteType"]
-    symbol = info["symbol"]
-    nav_price = info["navPrice"]
-    regular_market_price = info["regularMarketPrice"]
-    regular_market_open = info["regularMarketOpen"]
-    day_high = info["dayHigh"]
-    day_low = info["dayLow"]
-    previous_close = info["previousClose"]
-
     ticker = Ticker(
-        name=name,
-        quote_type=quote_type,
-        symbol=symbol,
-        nav_price=nav_price,
-        market_price=regular_market_price,
-        market_open=regular_market_open,
-        day_high=day_high,
-        day_low=day_low,
-        previous_close=previous_close,
+        name=info["longName"],
+        quote_type=info["quoteType"],
+        symbol=info["symbol"],
+        nav_price=info["navPrice"],
+        market_price=info["regularMarketPrice"],
+        market_open=info["regularMarketOpen"],
+        day_high=info["dayHigh"],
+        day_low=info["dayLow"],
+        previous_close=info["previousClose"],
     )
     return ticker
 
