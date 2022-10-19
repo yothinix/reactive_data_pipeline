@@ -10,17 +10,14 @@ from dagster import (
 )
 
 from dagster_repository.imperative import (
-    Ticker,
-    TickerMeta,
     get_etf_info,
 )
-from loguru import logger
-from sqlmodel import create_engine, Session, SQLModel
+from dagster_repository.models import Ticker, TickerMeta
 
 from typing import List
 
 from loguru import logger
-from sqlalchemy import desc, func, select as sel
+from sqlalchemy import func, select as sel
 from sqlmodel import create_engine, select, Session, SQLModel
 
 

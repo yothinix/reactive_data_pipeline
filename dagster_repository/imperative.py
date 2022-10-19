@@ -1,5 +1,4 @@
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from dagster import (
     build_schedule_from_partitioned_job,
     daily_partitioned_config,
@@ -10,31 +9,10 @@ from dagster import (
 
 from loguru import logger
 from sqlalchemy import desc, func, select as sel
-from sqlmodel import create_engine, Field, select, Session, SQLModel
+from sqlmodel import create_engine, select, Session, SQLModel
 import yfinance as yf
 
-
-class Ticker(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
-    quote_type: str
-    symbol: str
-    nav_price: float
-    market_price: float
-    market_open: float
-    day_high: float
-    day_low: float
-    previous_close: float
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
-
-
-class TickerMeta(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    symbol: str
-    monthly_max_market_price: float
-    monthly_min_market_price: float
-    partition: str
+from dagster_repository.models import Ticker, TickerMeta
 
 
 def get_etf_info(symbol: str) -> Ticker:
@@ -153,7 +131,6 @@ sync_etf_pipeline_daily_schedule = build_schedule_from_partitioned_job(
     description="Read the etf history from DB",
 )
 def perform_analysis(context):
-    ...
     connection_url = "sqlite:///database.sqlite"
     engine = create_engine(connection_url)
     SQLModel.metadata.create_all(engine)
