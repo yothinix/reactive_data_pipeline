@@ -1,15 +1,10 @@
 from dagster import (
-    AssetKey,
     DailyPartitionsDefinition,
     asset,
     Array,
-    asset_sensor,
-    build_schedule_from_partitioned_job,
-    daily_partitioned_config,
-    define_asset_job,
 )
 
-from dagster_repository.imperative import (
+from dagster_repository.ops import (
     get_etf_info,
 )
 from dagster_repository.models import Ticker, TickerMeta
@@ -54,32 +49,6 @@ def ticker(context) -> List[Ticker]:
     return [result for result in results]
 
 
-@daily_partitioned_config(start_date="2022-10-01", timezone="Asia/Bangkok")
-def partition_config(start, end_):
-    return {
-        "ops": {
-            "ticker": {"config": {"tickers": ["XT"], "date": start.strftime("%Y%m%d")}}
-        }
-    }
-
-
-materialize_ticker_job = define_asset_job(
-    name="materialize_ticker",
-    selection="ticker",
-    partitions_def=DailyPartitionsDefinition(
-        start_date="2022-10-01", timezone="Asia/Bangkok"
-    ),
-    config=partition_config,
-)
-
-materialize_ticker_job_daily_schedule = build_schedule_from_partitioned_job(
-    job=materialize_ticker_job,
-    name="materialize_ticker_job_daily_schedule",
-    hour_of_day=9,
-    minute_of_hour=0,
-)
-
-
 @asset(
     compute_kind="sqlite",
     config_schema={"ticker": str, "date": str},
@@ -113,37 +82,3 @@ def ticker_meta(context, ticker):
         )
         session.add(ticker_meta)
         session.commit()
-
-
-@daily_partitioned_config(start_date="2022-10-01", timezone="Asia/Bangkok")
-def partition_config2(start, end_):
-    return {
-        "ops": {
-            "ticker_meta": {
-                "config": {"ticker": "XT", "date": start.strftime("%Y%m%d")}
-            }
-        }
-    }
-
-
-materialize_ticker_meta_job = define_asset_job(
-    name="materialize_ticker_meta",
-    selection="ticker_meta",
-    partitions_def=DailyPartitionsDefinition(
-        start_date="2022-10-01", timezone="Asia/Bangkok"
-    ),
-    config=partition_config2,
-)
-
-
-@asset_sensor(
-    name=f"on_ticker_update_sensor",
-    asset_key=AssetKey("ticker"),
-    job=materialize_ticker_meta_job,
-    minimum_interval_seconds=10,
-)
-def on_ticker_update_sensor(context, asset_event):
-    yield materialize_ticker_meta_job.run_request_for_partition(
-        partition_key=asset_event.dagster_event.partition,
-        run_key=asset_event.dagster_event.partition,
-    )
