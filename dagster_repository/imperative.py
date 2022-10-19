@@ -8,11 +8,9 @@ from dagster import (
 )
 
 from loguru import logger
-from sqlalchemy import func, select as sel
-from sqlmodel import create_engine, Session, SQLModel
 import yfinance as yf
 
-from dagster_repository.models import Ticker, TickerMeta
+from dagster_repository.models import Ticker
 from dagster_repository.resources import sqlite_resource
 
 
@@ -112,35 +110,14 @@ sync_etf_pipeline_daily_schedule = build_schedule_from_partitioned_job(
 
 
 @op(
-    config_schema={"ticker": str, "date": str},
     description="Read the etf history from DB",
+    config_schema={"ticker": str, "date": str},
+    required_resource_keys={'db'}
 )
 def perform_analysis(context):
-    connection_url = "sqlite:///database.sqlite"
-    engine = create_engine(connection_url)
-    SQLModel.metadata.create_all(engine)
-    logger.info(f"Create database connection success at {connection_url}")
-
-    with Session(engine) as session:
-        max_market_price = session.exec(
-            sel(func.max(Ticker.market_price)).where(
-                Ticker.symbol == context.op_config["ticker"]
-            )
-        ).scalar_one()
-        min_market_price = session.exec(
-            sel(func.min(Ticker.market_price)).where(
-                Ticker.symbol == context.op_config["ticker"]
-            )
-        ).scalar_one()
-
-        ticker_meta = TickerMeta(
-            symbol=context.op_config["ticker"],
-            monthly_max_market_price=max_market_price,
-            monthly_min_market_price=min_market_price,
-            partition=context.op_config["date"],
-        )
-        session.add(ticker_meta)
-        session.commit()
+    context.resources.db.analysis(
+        context.op_config['ticker'],
+        context.op_config['date'])
 
 
 @graph
@@ -149,11 +126,18 @@ def analysis_etf_pipeline():
 
 
 @daily_partitioned_config(start_date="2022-10-01", timezone="Asia/Bangkok")
-def partition_config2(start, end_):
+def analysis_partition_config(start, end_):
     return {
         "ops": {
             "perform_analysis": {
                 "config": {"ticker": "XT", "date": start.strftime("%Y%m%d")}
+            }
+        },
+        "resources": {
+            "db": {
+                "config": {
+                    "connection_url": "sqlite:///database.sqlite"
+                }
             }
         }
     }
@@ -161,7 +145,11 @@ def partition_config2(start, end_):
 
 analysis_etf_pipeline_daily_schedule = build_schedule_from_partitioned_job(
     job=analysis_etf_pipeline.to_job(
-        name="analysis_etf_pipeline_daily_schedule", config=partition_config2
+        name="analysis_etf_pipeline_daily_schedule",
+        config=analysis_partition_config,
+        resource_defs={
+            'db': sqlite_resource
+        }
     ),
     name="analysis_etf_pipeline_daily_schedule",
     hour_of_day=10,
