@@ -8,11 +8,12 @@ from dagster import (
 )
 
 from loguru import logger
-from sqlalchemy import desc, func, select as sel
-from sqlmodel import create_engine, select, Session, SQLModel
+from sqlalchemy import func, select as sel
+from sqlmodel import create_engine, Session, SQLModel
 import yfinance as yf
 
 from dagster_repository.models import Ticker, TickerMeta
+from dagster_repository.resources import sqlite_resource
 
 
 def get_etf_info(symbol: str) -> Ticker:
@@ -56,39 +57,12 @@ def get_etf_infos(context) -> List[Ticker]:
     return assets
 
 
-def get_result_metadata(session: Session) -> Dict[str, Any]:
-    result_raw_count = session.exec(sel(func.count(Ticker.id))).scalar_one()
-
-    query = select(Ticker).order_by(desc(Ticker.created_at)).limit(5)
-    results = session.exec(query)
-
-    metadata = {
-        "count": result_raw_count,
-        "last_5_row": [ticker.dict() for ticker in results],
-    }
-    return metadata
-
-
-@op(description="Update Ticker to database")
-def update_database(assets: List[Ticker]) -> Dict[str, Any]:
-
-    connection_url = "sqlite:///database.sqlite"
-    engine = create_engine(connection_url)
-    SQLModel.metadata.create_all(engine)
-    logger.info(f"Create database connection success at {connection_url}")
-
-    with Session(engine) as session:
-        for asset in assets:
-            session.add(asset)
-            logger.info(
-                f"Added {asset.symbol} NAV:{asset.nav_price} PRICE:{asset.market_price} at {asset.created_at}"
-            )
-
-        session.commit()
-        logger.info("Write to database success")
-
-        metadata = get_result_metadata(session)
-        return metadata
+@op(
+    description="Update Ticker to database",
+    required_resource_keys={'db'}
+)
+def update_database(context, assets: List[Ticker]) -> Dict[str, Any]:
+    return context.resources.db.add_assets(assets)
 
 
 @graph()
@@ -109,13 +83,24 @@ def partition_config(start, end_):
                     "date": start.strftime("%Y%m%d"),
                 }
             }
+        },
+        "resources": {
+            "db": {
+                "config": {
+                    "connection_url": "sqlite:///database.sqlite"
+                }
+            }
         }
     }
 
 
 sync_etf_pipeline_daily_schedule = build_schedule_from_partitioned_job(
     job=sync_etf_pipeline.to_job(
-        name="sync_etf_pipeline_daily_schedule", config=partition_config
+        name="sync_etf_pipeline_daily_schedule",
+        config=partition_config,
+        resource_defs={
+            'db': sqlite_resource
+        }
     ),
     name="sync_etf_pipeline_daily_schedule",
     hour_of_day=9,
