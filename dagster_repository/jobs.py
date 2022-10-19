@@ -21,7 +21,19 @@ def analysis_etf_pipeline():
 def materialize_ticker_job_config(start, end_):
     return {
         "ops": {
-            "ticker": {"config": {"tickers": ["XT"], "date": start.strftime("%Y%m%d")}}
+            "ticker": {
+                "config": {
+                    "tickers": ["XT"],
+                    "date": start.strftime("%Y%m%d")
+                }
+            }
+        },
+        "resources": {
+            "db": {
+                "config": {
+                    "connection_url": "sqlite:///database.sqlite"
+                }
+            }
         }
     }
 
@@ -41,7 +53,17 @@ def materialize_ticker_meta_job_config(start, end_):
     return {
         "ops": {
             "ticker_meta": {
-                "config": {"ticker": "XT", "date": start.strftime("%Y%m%d")}
+                "config": {
+                    "ticker": "XT",
+                    "date": start.strftime("%Y%m%d")
+                }
+            }
+        },
+        "resources": {
+            "db": {
+                "config": {
+                    "connection_url": "sqlite:///database.sqlite"
+                }
             }
         }
     }
